@@ -57,7 +57,6 @@ st.markdown("---")
 # Inputs
 col1, col2, col3 = st.columns(3)
 
-
 with col3:
     ampere = st.number_input("الأمبير المطلوب (Ampere)", min_value=1.0, value=5.0, step=0.5)
 
@@ -80,9 +79,9 @@ with b_col2:
 
 with b_col1:
     if "48V" in battery_type:
-        battery_capacity = st.number_input("سعة البطارية الواحدة (Ah)", min_value=50, value=100, step=10, help="سعة وحدة الليثيوم الواحدة (مثلاً 100Ah)")
+        battery_kwh = st.number_input("سعة البطارية الواحدة (kWh)", min_value=1.0, value=5.0, step=0.1, help="مثلاً 5kWh أو 10kWh")
     else:
-        battery_capacity = st.number_input("سعة البطارية الواحدة (Ah)", min_value=50, value=200, step=10, help="سعة البطارية الواحدة 12 فولت")
+        battery_kwh = st.number_input("سعة البطارية الواحدة (kWh)", min_value=0.5, value=2.4, step=0.1, help="بطارية 200Ah-12V تعادل 2.4kWh")
 
 # Calculate Button
 if st.button("احسب متطلبات المنظومة"):
@@ -100,7 +99,6 @@ if st.button("احسب متطلبات المنظومة"):
         BATTERY_DOD = 0.5
         BATTERY_UNIT_VOLTAGE = 12
         
-    BATTERY_CAPACITY_AH_UNIT = battery_capacity
     PANEL_WATT_PEAK = 550  # Assuming 550W panels
     PEAK_SUN_HOURS = 5
     SYSTEM_EFFICIENCY = 0.8
@@ -121,20 +119,46 @@ if st.button("احسب متطلبات المنظومة"):
 
     # 4. Battery Calculations
     required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
-    required_bank_ah = required_battery_capacity_wh / BATTERY_VOLTAGE
-    parallel_strings = math.ceil(required_bank_ah / BATTERY_CAPACITY_AH_UNIT)
-    total_batteries = parallel_strings * 4  # 4 in series for 48V
+    
+    # Total kWh needed in storage bank
+    total_kwh_storage_needed = required_battery_capacity_wh / 1000
+    
+    if is_lithium_48v:
+        # Lithium (Integrated 48V)
+        total_batteries = math.ceil(total_kwh_storage_needed / battery_kwh)
+        
+        notes_batteries = f"توصيل {total_batteries} وحدات على التوازي"
+        batt_desc = f"عدد وحدات الليثيوم ({battery_kwh}kWh/48V)"
+        batt_val_desc = f"{total_batteries} وحدة"
+        batt_voltage_desc = "48 Volt (Integrated)"
+        
+    else:
+        # Lead Acid (12V blocks)
+        # We need to form 48V strings (4 batteries in series)
+        raw_total_batteries = math.ceil(total_kwh_storage_needed / battery_kwh)
+        
+        # Adjust to be distinct multiple of 4
+        remainder = raw_total_batteries % 4
+        if remainder != 0:
+            total_batteries = raw_total_batteries + (4 - remainder)
+        else:
+            total_batteries = raw_total_batteries
+            
+        parallel_strings = int(total_batteries / 4)
+        
+        notes_batteries = f"{parallel_strings} مصفوفة (String) على التوازي، كل مصفوفة 4 بطاريات توالي"
+        batt_desc = f"عدد البطاريات ({battery_kwh}kWh/12V)"
+        batt_val_desc = f"{int(total_batteries)} بطارية"
+        batt_voltage_desc = "48 Volt (4x12V Series)"
 
 
     # 5. Solar Panel Calculations
-    # Total energy needed from panels needs to cover total daily consumption + efficiency losses
     required_pv_energy_wh = total_daily_energy_wh / SYSTEM_EFFICIENCY
-    
-    # Total Array Watt Peak required
     required_array_watts = required_pv_energy_wh / PEAK_SUN_HOURS
-    
-    # Number of Panels
     total_panels = math.ceil(required_array_watts / PANEL_WATT_PEAK)
+    
+    # Calculate total PV capacity
+    total_pv_capacity = total_panels * PANEL_WATT_PEAK
 
     # Display Results
     st.markdown("### النتائج والتوصيات")
@@ -142,23 +166,23 @@ if st.button("احسب متطلبات المنظومة"):
     results = {
         "العنصر": [
             "حجم الإنفرتر (kVA)",
-            f"عدد البطاريات ({battery_capacity}Ah/12V)",
-            "عدد الألواح الشمسية (550W)",
+            batt_desc,
+            f"عدد الألواح الشمسية ({PANEL_WATT_PEAK}W)",
             "نظام البطاريات (Voltage)",
             "الحمل الكلي (Watt)"
         ],
         "القيمة المحسوبة": [
             f"{inverter_kva_display} kVA",
-            f"{total_batteries} بطارية",
+            batt_val_desc,
             f"{total_panels} لوح",
-            "48 Volt",
+            batt_voltage_desc,
             f"{load_watts} Watt"
         ],
         "ملاحظات": [
             "يوصى باختيار أقرب حجم قياسي أكبر",
-            f"{parallel_strings} مصفوفة (String) على التوازي",
-            f"إجمالي قدرة الألواح: {total_panels * PANEL_WATT_PEAK} Watt",
-            "4 بطاريات على التوالي لكل مصفوفة",
+            notes_batteries,
+            f"القدرة الإجمالية: {total_pv_capacity} Watt",
+            "النظام يعمل بجهد 48 فولت",
             "عند جهد 220 فولت"
         ]
     }
