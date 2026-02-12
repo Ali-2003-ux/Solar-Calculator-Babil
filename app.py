@@ -57,6 +57,7 @@ st.markdown("---")
 # Inputs
 col1, col2, col3 = st.columns(3)
 
+
 with col3:
     ampere = st.number_input("الأمبير المطلوب (Ampere)", min_value=1.0, value=5.0, step=0.5)
 
@@ -66,13 +67,33 @@ with col2:
 with col1:
     day_hours = st.number_input("ساعات التشغيل النهاري", min_value=0.0, max_value=24.0, value=6.0, step=0.5)
 
+st.markdown("---")
+st.markdown("### خصائص البطارية")
+b_col1, b_col2 = st.columns(2)
+
+with b_col2:
+    battery_type = st.selectbox(
+        "نوع البطارية", 
+        ["Lead Acid / Gel / AGM (DoD 50%)", "Lithium Ion (DoD 80%)"],
+        index=0
+    )
+
+with b_col1:
+    battery_capacity = st.number_input("سعة البطارية الواحدة (Ah)", min_value=50, value=200, step=10)
+
 # Calculate Button
 if st.button("احسب متطلبات المنظومة"):
     # Constants
     VOLTAGE = 220
     BATTERY_VOLTAGE = 48
-    BATTERY_DOD = 0.5
-    BATTERY_CAPACITY_AH_UNIT = 200  # Assuming 200Ah 12V batteries
+    
+    # Determine DoD based on selection
+    if "Lithium" in battery_type:
+        BATTERY_DOD = 0.8
+    else:
+        BATTERY_DOD = 0.5
+        
+    BATTERY_CAPACITY_AH_UNIT = battery_capacity
     PANEL_WATT_PEAK = 550  # Assuming 550W panels
     PEAK_SUN_HOURS = 5
     SYSTEM_EFFICIENCY = 0.8
@@ -83,8 +104,8 @@ if st.button("احسب متطلبات المنظومة"):
     
     # 2. Inverter Calculation (kVA)
     inverter_kva = (load_watts * INVERTER_SAFETY_FACTOR) / 1000
-    # Round up to nearest standard size (simplified logic, just showing calculated minimum)
-    inverter_kva_display = math.ceil(inverter_kva * 10) / 10  # Round to 1 decimal
+    # Round up to nearest standard size
+    inverter_kva_display = math.ceil(inverter_kva * 10) / 10
 
     # 3. Energy Calculations
     energy_night_wh = load_watts * night_hours
@@ -92,18 +113,11 @@ if st.button("احسب متطلبات المنظومة"):
     total_daily_energy_wh = energy_night_wh + energy_day_wh
 
     # 4. Battery Calculations
-    # Energy required from batteries = Night Energy
-    # Considering DoD
     required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
-    
-    # Bank Capacity in Ah at 48V
     required_bank_ah = required_battery_capacity_wh / BATTERY_VOLTAGE
-    
-    # Number of parallel strings needed (using 200Ah batteries)
     parallel_strings = math.ceil(required_bank_ah / BATTERY_CAPACITY_AH_UNIT)
-    
-    # Total batteries (4 in series for 48V * parallel strings)
-    total_batteries = parallel_strings * 4
+    total_batteries = parallel_strings * 4  # 4 in series for 48V
+
 
     # 5. Solar Panel Calculations
     # Total energy needed from panels needs to cover total daily consumption + efficiency losses
@@ -121,7 +135,7 @@ if st.button("احسب متطلبات المنظومة"):
     results = {
         "العنصر": [
             "حجم الإنفرتر (kVA)",
-            "عدد البطاريات (200Ah/12V)",
+            f"عدد البطاريات ({battery_capacity}Ah/12V)",
             "عدد الألواح الشمسية (550W)",
             "نظام البطاريات (Voltage)",
             "الحمل الكلي (Watt)"
