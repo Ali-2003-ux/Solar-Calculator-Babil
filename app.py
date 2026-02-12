@@ -61,7 +61,7 @@ header_col1, header_col2, header_col3 = st.columns([1, 2, 1])
 with header_col1:
     uni_logo = load_image("assets/logo_university.png")
     if uni_logo:
-        st.image(uni_logo, use_container_width=True)
+        st.image(uni_logo, width=130)
     else:
         st.info("University Logo")
 
@@ -72,7 +72,7 @@ with header_col2:
 with header_col3:
     center_logo = load_image("assets/logo_center.png")
     if center_logo:
-        st.image(center_logo, use_container_width=True)
+        st.image(center_logo, width=130)
     else:
         st.info("Center Logo")
 
