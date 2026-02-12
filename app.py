@@ -109,6 +109,33 @@ elif panel_efficiency > 15:
 else:
     st.error("❌ كفاءة منخفضة (قد تكون تقنية قديمة)")
 
+# Advanced Settings (Editable Equation Parameters)
+with st.sidebar:
+    st.header("⚙️ إعدادات المعادلة (متقدم)")
+    st.info("يمكنك تعديل ثوابت المعادلة من هنا لتناسب موقعك الجغرافي ونوعية الأسلاك.")
+    
+    PEAK_SUN_HOURS = st.number_input(
+        "ساعات ذروة الشمس (Sun Hours)", 
+        min_value=2.0, max_value=12.0, value=5.0, step=0.1,
+        help="المعدل اليومي لساعات السطوع الشمسي القوي (في العراق عادة 5 ساعات)"
+    )
+    
+    SYSTEM_EFFICIENCY_PCT = st.number_input(
+        "كفاءة النظام (System Efficiency %)", 
+        min_value=50, max_value=100, value=80, step=5,
+        help="نسبة الطاقة الفعلية المستفادة بعد طرح الفواقد (حرارة، أسلاك، غبار)"
+    )
+    SYSTEM_EFFICIENCY = SYSTEM_EFFICIENCY_PCT / 100.0
+    
+    INVERTER_SAFETY_FACTOR = st.number_input(
+        "معامل أمان الإنفرتر", 
+        min_value=1.0, max_value=2.0, value=1.25, step=0.05,
+        help="زيادة حجم الإنفرتر لتحمل التيارات اللحظية (Surge)"
+    )
+    
+    st.markdown("---")
+    st.markdown("Developed by: Energy Research Center")
+
 # Calculate Button
 if st.button("احسب متطلبات المنظومة"):
     # Constants
@@ -123,9 +150,7 @@ if st.button("احسب متطلبات المنظومة"):
         BATTERY_DOD = 0.5
         
     PANEL_WATT_PEAK = panel_power
-    PEAK_SUN_HOURS = 5
-    SYSTEM_EFFICIENCY = 0.8
-    INVERTER_SAFETY_FACTOR = 1.25
+    # PEAK_SUN_HOURS & SYSTEM_EFFICIENCY came from Sidebar now
 
     # 1. Load Calculations
     load_watts = ampere * VOLTAGE
