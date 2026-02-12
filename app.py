@@ -107,15 +107,31 @@ if st.button("احسب متطلبات المنظومة"):
     # 1. Load Calculations
     load_watts = ampere * VOLTAGE
     
-    # 2. Inverter Calculation (kVA)
-    inverter_kva = (load_watts * INVERTER_SAFETY_FACTOR) / 1000
-    # Round up to nearest standard size
-    inverter_kva_display = math.ceil(inverter_kva * 10) / 10
-
-    # 3. Energy Calculations
+    # 2. Energy Calculations (Moved up for Inverter Sizing)
     energy_night_wh = load_watts * night_hours
     energy_day_wh = load_watts * day_hours
     total_daily_energy_wh = energy_night_wh + energy_day_wh
+
+    # 3. Inverter Calculation (Smart Sizing)
+    # A. Size based on instantaneous load
+    inverter_load_kva = (load_watts * INVERTER_SAFETY_FACTOR) / 1000
+    
+    # B. Size based on charging requirements (Must refill night consumption in sun hours)
+    # We assume we need to replace the night energy during the 5 peak sun hours
+    required_charging_power_kw = (energy_night_wh / PEAK_SUN_HOURS) / 1000
+    # Add safety margin for charging efficiency and simultaneous load
+    inverter_charging_kva = required_charging_power_kw * 1.2
+    
+    # Select the larger size
+    if inverter_charging_kva > inverter_load_kva:
+        inverter_kva = inverter_charging_kva
+        inverter_reason = "تم تكبير حجم الإنفرتر لضمان سرعة شحن البطاريات (Charging Speed)"
+    else:
+        inverter_kva = inverter_load_kva
+        inverter_reason = "الحجم بناءً على إجمالي الحمل التشغيلي (Load Requirement)"
+
+    # Round up to nearest standard size
+    inverter_kva_display = math.ceil(inverter_kva * 10) / 10
 
     # 4. Battery Calculations
     required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
