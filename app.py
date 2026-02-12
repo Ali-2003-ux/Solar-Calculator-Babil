@@ -54,13 +54,11 @@ st.markdown("### مركز بحوث الطاقة - بابل")
 st.markdown("---")
 
 # Inputs: Load & Hours
-col1, col2, col3 = st.columns(3)
-with col3:
-    ampere = st.number_input("الأمبير المطلوب (Ampere)", min_value=1.0, value=5.0, step=0.5)
+col1, col2 = st.columns(2)
 with col2:
-    night_hours = st.number_input("ساعات التشغيل الليلي", min_value=0.0, max_value=24.0, value=6.0, step=0.5)
+    ampere = st.number_input("الأمبير المطلوب (Ampere)", min_value=1.0, value=5.0, step=0.5)
 with col1:
-    day_hours = st.number_input("ساعات التشغيل النهاري", min_value=0.0, max_value=24.0, value=6.0, step=0.5)
+    night_hours = st.number_input("ساعات التشغيل (Hours)", min_value=0.0, max_value=24.0, value=6.0, step=0.5, help="عدد ساعات تشغيل الحمل (يتم الاعتماد عليها كلياً لحساب المنظومة)")
 
 # Inputs: Battery
 st.markdown("---")
@@ -156,15 +154,16 @@ if st.button("احسب متطلبات المنظومة"):
     load_watts = ampere * VOLTAGE
     
     # 2. Energy Calculations
-    energy_night_wh = load_watts * night_hours
-    energy_day_wh = load_watts * day_hours
-    total_daily_energy_wh = energy_night_wh + energy_day_wh
+    # Based on user request: Ignore daytime direct consumption overlap.
+    # Calculate Total Energy based on the input hours (Night/Total Operation hours)
+    energy_total_wh = load_watts * night_hours
+    total_daily_energy_wh = energy_total_wh
 
     # 3. Inverter Calculation (C-Rate Method)
     inverter_load_kva = (load_watts * INVERTER_SAFETY_FACTOR) / 1000
     
     # Battery Capacity for C-Rate
-    required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
+    required_battery_capacity_wh = energy_total_wh / BATTERY_DOD
     total_kwh_storage_needed = required_battery_capacity_wh / 1000
     
     if is_lithium_48v:
@@ -253,8 +252,8 @@ if st.button("احسب متطلبات المنظومة"):
     
     st.info(f"""
     **تفاصيل سريعة:**
-    - استهلاك الطاقة اليومي المتوقع: {total_daily_energy_wh/1000:.2f} كيلو واط ساعة.
-    - سعة البطاريات المطلوبة (للييل): {required_battery_capacity_wh/1000:.2f} كيلو واط ساعة.
+    - استهلاك الطاقة اليومي (المعتمد): {total_daily_energy_wh/1000:.2f} كيلو واط ساعة.
+    - سعة البطاريات المطلوبة: {required_battery_capacity_wh/1000:.2f} كيلو واط ساعة.
     """)
     
     # Mathematical Formulas Section
