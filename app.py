@@ -112,36 +112,57 @@ if st.button("احسب متطلبات المنظومة"):
     energy_day_wh = load_watts * day_hours
     total_daily_energy_wh = energy_night_wh + energy_day_wh
 
-    # 3. Inverter Calculation (Smart Sizing)
-    # A. Size based on instantaneous load
+    # 3. Inverter Calculation (Global Standard - C-Rate Method)
+    # A. Size based on instantaneous load (Surge & Continous)
     inverter_load_kva = (load_watts * INVERTER_SAFETY_FACTOR) / 1000
     
-    # B. Size based on charging requirements (Must refill night consumption in sun hours)
-    # We assume we need to replace the night energy during the 5 peak sun hours
-    required_charging_power_kw = (energy_night_wh / PEAK_SUN_HOURS) / 1000
-    # Add safety margin for charging efficiency and simultaneous load
-    inverter_charging_kva = required_charging_power_kw * 1.2
+    # B. Size based on Battery C-Rate (Charging/Discharging Capability)
+    # Global Standards:
+    # - Lead Acid: Recommended charge rate ~0.1C to 0.2C (Mean 0.15C) to prevent overheating/damage.
+    # - Lithium: Recommended charge rate ~0.5C (can go up to 1C but 0.5C is standard for longevity).
     
+    # Calculate Total Battery Capacity in kWh first (needed for C-Rate)
+    required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
+    total_kwh_storage_needed = required_battery_capacity_wh / 1000
+    
+    # Determine actual selected bank size (roughly) based on unit count rounding
+    # This ensures we size for the ACTUAL bank, not just the required minimum
+    if is_lithium_48v:
+        c_rate_factor = 0.5  # 0.5C for Lithium
+        total_batteries_calc = math.ceil(total_kwh_storage_needed / battery_kwh)
+        actual_bank_kwh = total_batteries_calc * battery_kwh
+        inverter_battery_kva = actual_bank_kwh * c_rate_factor
+        reason_c_rate = "توافقية الليثيوم (0.5C Charging)"
+    else:
+        c_rate_factor = 0.2  # 0.2C for Lead Acid (Max recommended)
+        raw_total_batteries = math.ceil(total_kwh_storage_needed / battery_kwh)
+        # Adjust for 48V series strings
+        remainder = raw_total_batteries % 4
+        if remainder != 0:
+            total_batteries_calc = raw_total_batteries + (4 - remainder)
+        else:
+            total_batteries_calc = raw_total_batteries
+        actual_bank_kwh = total_batteries_calc * battery_kwh
+        inverter_battery_kva = actual_bank_kwh * c_rate_factor
+        reason_c_rate = "توافقية البطاريات السائلة/الجل (0.2C Charging)"
+
     # Select the larger size
-    if inverter_charging_kva > inverter_load_kva:
-        inverter_kva = inverter_charging_kva
-        inverter_reason = "تم تكبير حجم الإنفرتر لضمان سرعة شحن البطاريات (Charging Speed)"
+    if inverter_battery_kva > inverter_load_kva:
+        inverter_kva = inverter_battery_kva
+        inverter_reason = f"تم التكبير ليتوافق مع سعة البطاريات ({reason_c_rate})"
     else:
         inverter_kva = inverter_load_kva
-        inverter_reason = "الحجم بناءً على إجمالي الحمل التشغيلي (Load Requirement)"
+        inverter_reason = "الحجم بناءً على إجمالي الحمل التشغيلي (Load)"
 
     # Round up to nearest standard size
     inverter_kva_display = math.ceil(inverter_kva * 10) / 10
 
     # 4. Battery Calculations
-    required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
-    
-    # Total kWh needed in storage bank
-    total_kwh_storage_needed = required_battery_capacity_wh / 1000
+    # (Calculations for totals done upstream for Inverter Sizing, re-using values)
     
     if is_lithium_48v:
         # Lithium (Integrated 48V)
-        total_batteries = math.ceil(total_kwh_storage_needed / battery_kwh)
+        total_batteries = total_batteries_calc
         
         notes_batteries = f"توصيل {total_batteries} وحدات على التوازي"
         batt_desc = f"عدد وحدات الليثيوم ({battery_kwh}kWh/48V)"
@@ -150,16 +171,7 @@ if st.button("احسب متطلبات المنظومة"):
         
     else:
         # Lead Acid (12V blocks)
-        # We need to form 48V strings (4 batteries in series)
-        raw_total_batteries = math.ceil(total_kwh_storage_needed / battery_kwh)
-        
-        # Adjust to be distinct multiple of 4
-        remainder = raw_total_batteries % 4
-        if remainder != 0:
-            total_batteries = raw_total_batteries + (4 - remainder)
-        else:
-            total_batteries = raw_total_batteries
-            
+        total_batteries = total_batteries_calc
         parallel_strings = int(total_batteries / 4)
         
         notes_batteries = f"{parallel_strings} مصفوفة (String) على التوازي، كل مصفوفة 4 بطاريات توالي"
