@@ -74,24 +74,31 @@ b_col1, b_col2 = st.columns(2)
 with b_col2:
     battery_type = st.selectbox(
         "نوع البطارية", 
-        ["Lead Acid / Gel / AGM (DoD 50%)", "Lithium Ion (DoD 80%)"],
+        ["Lead Acid / Gel / AGM (12V - DoD 50%)", "Lithium Ion (Integrated 48V - DoD 80%)"],
         index=0
     )
 
 with b_col1:
-    battery_capacity = st.number_input("سعة البطارية الواحدة (Ah)", min_value=50, value=200, step=10)
+    if "48V" in battery_type:
+        battery_capacity = st.number_input("سعة البطارية الواحدة (Ah)", min_value=50, value=100, step=10, help="سعة وحدة الليثيوم الواحدة (مثلاً 100Ah)")
+    else:
+        battery_capacity = st.number_input("سعة البطارية الواحدة (Ah)", min_value=50, value=200, step=10, help="سعة البطارية الواحدة 12 فولت")
 
 # Calculate Button
 if st.button("احسب متطلبات المنظومة"):
     # Constants
     VOLTAGE = 220
-    BATTERY_VOLTAGE = 48
+    BATTERY_SYSTEM_VOLTAGE = 48
     
-    # Determine DoD based on selection
-    if "Lithium" in battery_type:
+    # Determine DoD and voltage per unit based on selection
+    is_lithium_48v = "48V" in battery_type
+    
+    if is_lithium_48v:
         BATTERY_DOD = 0.8
+        BATTERY_UNIT_VOLTAGE = 48
     else:
         BATTERY_DOD = 0.5
+        BATTERY_UNIT_VOLTAGE = 12
         
     BATTERY_CAPACITY_AH_UNIT = battery_capacity
     PANEL_WATT_PEAK = 550  # Assuming 550W panels
