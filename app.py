@@ -55,30 +55,27 @@ def load_image(image_path):
         return image_path
     return None
 
-# Logos Header
-logo_col1, logo_col2 = st.columns([1, 1])
+# Logos & Header Layout (Centered Title with Logos on sides)
+header_col1, header_col2, header_col3 = st.columns([1, 2, 1])
 
-with logo_col1:
-    # Try to load University Logo
+with header_col1:
     uni_logo = load_image("assets/logo_university.png")
     if uni_logo:
-        st.image(uni_logo, width=150)
+        st.image(uni_logo, use_container_width=True)
     else:
-        st.info("يرجى وضع شعار الجامعة باسم 'logo_university.png' في مجلد assets")
+        st.info("University Logo")
 
-with logo_col2:
-    # Try to load Center Logo
-    # Instruct user to place 'logo_center.png' in assets folder
+with header_col2:
+    st.markdown("<h1 style='text-align: center; color: #f39c12; margin-bottom: 0;'>حاسبة منظومات الطاقة الشمسية</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: #555; margin-top: 0;'>مركز بحوث الطاقة - بابل</h3>", unsafe_allow_html=True)
+
+with header_col3:
     center_logo = load_image("assets/logo_center.png")
     if center_logo:
-        st.image(center_logo, width=150)
+        st.image(center_logo, use_container_width=True)
     else:
-        # If not found, show instructions or placeholder
-        st.info("يرجى وضع شعار المركز باسم 'logo_center.png' في مجلد assets")
+        st.info("Center Logo")
 
-# Header Title
-st.title("حاسبة منظومات الطاقة الشمسية")
-st.markdown("### مركز بحوث الطاقة - بابل")
 st.markdown("---")
 
 # Inputs: Load & Hours
@@ -87,6 +84,14 @@ with col2:
     ampere = st.number_input("الأمبير المطلوب (Ampere)", min_value=1.0, value=5.0, step=0.5)
 with col1:
     night_hours = st.number_input("ساعات التشغيل (Hours)", min_value=0.0, max_value=24.0, value=6.0, step=0.5, help="عدد ساعات تشغيل الحمل (يتم الاعتماد عليها كلياً لحساب المنظومة)")
+
+# Phase Selection
+phase_type = st.radio(
+    "نوع المنظومة (System Phase)",
+    ["Single Phase (1 Phase)", "Three Phase (3 Phase)"],
+    horizontal=True,
+    help="اختر 3 Phase إذا كانت الأحمال موزعة على 3 خطوط (سيتم ضرب القدرة في 3)"
+)
 
 # Inputs: Battery
 st.markdown("---")
@@ -179,7 +184,14 @@ if st.button("احسب متطلبات المنظومة"):
     # PEAK_SUN_HOURS & SYSTEM_EFFICIENCY came from Sidebar now
 
     # 1. Load Calculations
-    load_watts = ampere * VOLTAGE
+    if "Three Phase" in phase_type:
+        # For 3-Phase, Total Power = 3 * V_phase * I_phase (assuming user inputs Amp per phase)
+        load_watts = ampere * VOLTAGE * 3
+        system_type_str = "Three Phase (3PH)"
+    else:
+        # For 1-Phase
+        load_watts = ampere * VOLTAGE
+        system_type_str = "Single Phase (1PH)"
     
     # 2. Energy Calculations
     # Based on user request: Ignore daytime direct consumption overlap.
