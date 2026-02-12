@@ -99,7 +99,7 @@ if st.button("احسب متطلبات المنظومة"):
         BATTERY_DOD = 0.5
         BATTERY_UNIT_VOLTAGE = 12
         
-    PANEL_WATT_PEAK = 550  # Assuming 550W panels
+    PANEL_WATT_PEAK = panel_power  # Use User Input
     PEAK_SUN_HOURS = 5
     SYSTEM_EFFICIENCY = 0.8
     INVERTER_SAFETY_FACTOR = 1.25
@@ -187,6 +187,9 @@ if st.button("احسب متطلبات المنظومة"):
     
     # Calculate total PV capacity
     total_pv_capacity = total_panels * PANEL_WATT_PEAK
+    
+    # Calculate Total Area
+    total_area_m2 = total_panels * panel_area
 
     # Display Results
     st.markdown("### النتائج والتوصيات")
@@ -196,6 +199,7 @@ if st.button("احسب متطلبات المنظومة"):
             "حجم الإنفرتر (kVA)",
             batt_desc,
             f"عدد الألواح الشمسية ({PANEL_WATT_PEAK}W)",
+            "المساحة المطلوبة للألواح (م²)",
             "نظام البطاريات (Voltage)",
             "الحمل الكلي (Watt)"
         ],
@@ -203,13 +207,15 @@ if st.button("احسب متطلبات المنظومة"):
             f"{inverter_kva_display} kVA",
             batt_val_desc,
             f"{total_panels} لوح",
+            f"{total_area_m2:.2f} م²",
             batt_voltage_desc,
             f"{load_watts} Watt"
         ],
         "ملاحظات": [
-            f"يونصح باختيار أقرب حجم قياسي (. {inverter_reason})",
+            f"يوصى باختيار أقرب حجم قياسي أكبر ({inverter_reason})",
             notes_batteries,
-            f"إجمالي قدرة الألواح: {total_panels * PANEL_WATT_PEAK} Watt",
+            f"إجمالي قدرة الألواح: {total_pv_capacity} Watt",
+            f"مساحة اللوح الواحد: {panel_area:.2f} م²",
             "4 بطاريات على التوالي لكل مصفوفة",
             "عند جهد 220 فولت"
         ]
