@@ -291,6 +291,16 @@ if st.button("احسب متطلبات المنظومة"):
         $$
         N_{Panels} = \\frac{Daily\\_Energy}{(Sun\\_Hours \\times Panel\\_Watt \\times System\\_Eff)}
         $$
+        **تطبيق بالأرقام الحالية:**
+        - الاستهلاك اليومي = {total_daily_energy_wh:.0f} وات/ساعة
+        - إنتاج اللوح الواحد = {PANEL_WATT_PEAK} × {PEAK_SUN_HOURS} × {SYSTEM_EFFICIENCY} = {PANEL_WATT_PEAK * PEAK_SUN_HOURS * SYSTEM_EFFICIENCY:.0f} وات/ساعة
+        - عدد الألواح = {total_daily_energy_wh:.0f} ÷ {PANEL_WATT_PEAK * PEAK_SUN_HOURS * SYSTEM_EFFICIENCY:.0f} = **{total_daily_energy_wh / (PANEL_WATT_PEAK * PEAK_SUN_HOURS * SYSTEM_EFFICIENCY):.2f}**
+        (يتم جبر الرقم للأعلى ليصبح **{total_panels}** لوح)
+        حيث أن القيم المستخدمة حالياً هي:
+        - **Sun_Hours**: {PEAK_SUN_HOURS} ساعات
+        - **System_Eff**: {SYSTEM_EFFICIENCY:.2f} ({SYSTEM_EFFICIENCY*100}%)
+        
+        ويمكنك تعديل هذه القيم من القائمة الجانبية (⚙️) للحصول على "قراءة صحيحة" تناسب ظروفك الخاصة.
         """)
 
 else:
