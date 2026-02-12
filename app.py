@@ -48,35 +48,43 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Helper function to load image
+# Helper function to load image properly
 import os
+import base64
+
+def get_base64_image(image_path):
+    if os.path.exists(image_path):
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    return None
+
 def load_image(image_path):
     if os.path.exists(image_path):
         return image_path
     return None
 
-# Logos & Header Layout (Centered Title with Logos on sides)
-header_col1, header_col2, header_col3 = st.columns([1, 2, 1])
+# Load Images as Base64 for HTML embedding
+uni_logo_b64 = get_base64_image("assets/logo_university.png")
+center_logo_b64 = get_base64_image("assets/logo_center.png")
+uni_src = f"data:image/png;base64,{uni_logo_b64}" if uni_logo_b64 else ""
+center_src = f"data:image/png;base64,{center_logo_b64}" if center_logo_b64 else ""
 
-with header_col1:
-    uni_logo = load_image("assets/logo_university.png")
-    if uni_logo:
-        st.image(uni_logo, width=130)
-    else:
-        st.info("University Logo")
-
-with header_col2:
-    st.markdown("<h1 style='text-align: center; color: #f39c12; margin-bottom: 0;'>حاسبة منظومات الطاقة الشمسية</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center; color: #555; margin-top: 0;'>مركز بحوث الطاقة - بابل</h3>", unsafe_allow_html=True)
-
-with header_col3:
-    center_logo = load_image("assets/logo_center.png")
-    if center_logo:
-        st.image(center_logo, width=130)
-    else:
-        st.info("Center Logo")
-
-st.markdown("---")
+# Custom HTML Header (Flexbox for Mobile Responsiveness)
+st.markdown(f"""
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; direction: rtl;">
+    <div style="flex: 1; text-align: right;">
+        {"<img src='" + uni_src + "' style='height: 80px; width: auto; max-width: 100%; object-fit: contain;' />" if uni_src else "University Logo"}
+    </div>
+    <div style="flex: 2; text-align: center; padding: 0 10px;">
+        <h1 style='color: #f39c12; margin: 0; font-size: 1.5rem;'>حاسبة منظومات الطاقة الشمسية</h1>
+        <h3 style='color: #555; margin: 0; font-size: 0.9rem;'>مركز بحوث الطاقة - بابل</h3>
+    </div>
+    <div style="flex: 1; text-align: left;">
+        {"<img src='" + center_src + "' style='height: 80px; width: auto; max-width: 100%; object-fit: contain;' />" if center_src else "Center Logo"}
+    </div>
+</div>
+<hr style="margin-top: 5px; margin-bottom: 20px;">
+""", unsafe_allow_html=True)
 
 # Inputs: Load & Hours
 col1, col2 = st.columns(2)
