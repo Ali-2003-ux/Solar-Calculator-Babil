@@ -48,7 +48,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Header
+# Helper function to load image
+import os
+def load_image(image_path):
+    if os.path.exists(image_path):
+        return image_path
+    return None
+
+# Logos Header
+logo_col1, logo_col2 = st.columns([1, 1])
+
+with logo_col1:
+    # Try to load University Logo
+    uni_logo = load_image("assets/logo_university.png")
+    if uni_logo:
+        st.image(uni_logo, width=150)
+    else:
+        st.info("يرجى وضع شعار الجامعة باسم 'logo_university.png' في مجلد assets")
+
+with logo_col2:
+    # Try to load Center Logo
+    # Instruct user to place 'logo_center.png' in assets folder
+    center_logo = load_image("assets/logo_center.png")
+    if center_logo:
+        st.image(center_logo, width=150)
+    else:
+        # If not found, show instructions or placeholder
+        st.info("يرجى وضع شعار المركز باسم 'logo_center.png' في مجلد assets")
+
+# Header Title
 st.title("حاسبة منظومات الطاقة الشمسية")
 st.markdown("### مركز بحوث الطاقة - بابل")
 st.markdown("---")
@@ -222,7 +250,7 @@ if st.button("احسب متطلبات المنظومة"):
     st.markdown("### النتائج والتوصيات")
     results = {
         "العنصر": [
-            "حجم الإنفرتر (kVA)",
+            f"حجم الإنفرتر ({system_type_str})",
             batt_desc,
             f"عدد الألواح الشمسية ({PANEL_WATT_PEAK}W)",
             "المساحة المطلوبة للألواح (م²)",
@@ -243,7 +271,7 @@ if st.button("احسب متطلبات المنظومة"):
             f"إجمالي قدرة الألواح: {total_pv_capacity} Watt",
             f"مساحة اللوح الواحد: {panel_area:.2f} م²",
             "4 بطاريات على التوالي لكل مصفوفة",
-            "عند جهد 220 فولت"
+            "عند جهد 220 فولت (فيز واحد) أو 380 فولت (3 فيز)"
         ]
     }
     
