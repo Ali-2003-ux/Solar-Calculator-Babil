@@ -9,7 +9,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS for Arabic RTL and Styling
+# Custom CSS
 st.markdown("""
 <style>
     .main {
@@ -34,7 +34,6 @@ st.markdown("""
         direction: rtl;
         width: 100%;
     }
-    /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
@@ -54,34 +53,61 @@ st.title("حاسبة منظومات الطاقة الشمسية")
 st.markdown("### مركز بحوث الطاقة - بابل")
 st.markdown("---")
 
-# Inputs
+# Inputs: Load & Hours
 col1, col2, col3 = st.columns(3)
-
 with col3:
     ampere = st.number_input("الأمبير المطلوب (Ampere)", min_value=1.0, value=5.0, step=0.5)
-
 with col2:
     night_hours = st.number_input("ساعات التشغيل الليلي", min_value=0.0, max_value=24.0, value=6.0, step=0.5)
-
 with col1:
     day_hours = st.number_input("ساعات التشغيل النهاري", min_value=0.0, max_value=24.0, value=6.0, step=0.5)
 
+# Inputs: Battery
 st.markdown("---")
 st.markdown("### خصائص البطارية")
 b_col1, b_col2 = st.columns(2)
-
 with b_col2:
     battery_type = st.selectbox(
         "نوع البطارية", 
         ["Lead Acid / Gel / AGM (12V - DoD 50%)", "Lithium Ion (Integrated 48V - DoD 80%)"],
         index=0
     )
-
 with b_col1:
     if "48V" in battery_type:
         battery_kwh = st.number_input("سعة البطارية الواحدة (kWh)", min_value=1.0, value=5.0, step=0.1, help="مثلاً 5kWh أو 10kWh")
     else:
         battery_kwh = st.number_input("سعة البطارية الواحدة (kWh)", min_value=0.5, value=2.4, step=0.1, help="بطارية 200Ah-12V تعادل 2.4kWh")
+
+# Inputs: Solar Panel Specs (NEW)
+st.markdown("---")
+st.markdown("### مواصفات الألواح الشمسية (تحليل الكفاءة)")
+p_col1, p_col2, p_col3 = st.columns(3)
+
+with p_col3:
+    panel_power = st.number_input("قدرة اللوح (Watt)", min_value=100, value=550, step=10)
+with p_col2:
+    panel_length = st.number_input("طول اللوح (متر)", min_value=1.0, value=2.27, step=0.01)
+with p_col1:
+    panel_width = st.number_input("عرض اللوح (متر)", min_value=0.5, value=1.13, step=0.01)
+
+# Real-time Efficiency Calculation
+panel_area = panel_length * panel_width
+if panel_area > 0:
+    panel_efficiency = (panel_power / (panel_area * 1000)) * 100
+else:
+    panel_efficiency = 0
+
+st.caption(f"📊 **كفاءة اللوح المحسوبة:** {panel_efficiency:.2f}%")
+
+# Quality Check
+if panel_efficiency > 21:
+    st.success("✨ كفاءة ممتازة (Technology: Monocrystalline PERC/N-Type)")
+elif panel_efficiency > 19:
+    st.info("✅ كفاءة جيدة جداً (Technology: Monocrystalline)")
+elif panel_efficiency > 15:
+    st.warning("⚠️ كفاءة متوسطة (Technology: Polycrystalline)")
+else:
+    st.error("❌ كفاءة منخفضة (قد تكون تقنية قديمة)")
 
 # Calculate Button
 if st.button("احسب متطلبات المنظومة"):
@@ -89,17 +115,14 @@ if st.button("احسب متطلبات المنظومة"):
     VOLTAGE = 220
     BATTERY_SYSTEM_VOLTAGE = 48
     
-    # Determine DoD and voltage per unit based on selection
+    # Determine DoD and voltage based on battery selection
     is_lithium_48v = "48V" in battery_type
-    
     if is_lithium_48v:
         BATTERY_DOD = 0.8
-        BATTERY_UNIT_VOLTAGE = 48
     else:
         BATTERY_DOD = 0.5
-        BATTERY_UNIT_VOLTAGE = 12
         
-    PANEL_WATT_PEAK = panel_power  # Use User Input
+    PANEL_WATT_PEAK = panel_power
     PEAK_SUN_HOURS = 5
     SYSTEM_EFFICIENCY = 0.8
     INVERTER_SAFETY_FACTOR = 1.25
@@ -107,46 +130,54 @@ if st.button("احسب متطلبات المنظومة"):
     # 1. Load Calculations
     load_watts = ampere * VOLTAGE
     
-    # 2. Energy Calculations (Moved up for Inverter Sizing)
+    # 2. Energy Calculations
     energy_night_wh = load_watts * night_hours
     energy_day_wh = load_watts * day_hours
     total_daily_energy_wh = energy_night_wh + energy_day_wh
 
-    # 3. Inverter Calculation (Global Standard - C-Rate Method)
-    # A. Size based on instantaneous load (Surge & Continous)
+    # 3. Inverter Calculation (C-Rate Method)
     inverter_load_kva = (load_watts * INVERTER_SAFETY_FACTOR) / 1000
     
-    # B. Size based on Battery C-Rate (Charging/Discharging Capability)
-    # Global Standards:
-    # - Lead Acid: Recommended charge rate ~0.1C to 0.2C (Mean 0.15C) to prevent overheating/damage.
-    # - Lithium: Recommended charge rate ~0.5C (can go up to 1C but 0.5C is standard for longevity).
-    
-    # Calculate Total Battery Capacity in kWh first (needed for C-Rate)
+    # Battery Capacity for C-Rate
     required_battery_capacity_wh = energy_night_wh / BATTERY_DOD
     total_kwh_storage_needed = required_battery_capacity_wh / 1000
     
-    # Determine actual selected bank size (roughly) based on unit count rounding
-    # This ensures we size for the ACTUAL bank, not just the required minimum
     if is_lithium_48v:
-        c_rate_factor = 0.5  # 0.5C for Lithium
+        c_rate_factor = 0.5
         total_batteries_calc = math.ceil(total_kwh_storage_needed / battery_kwh)
         actual_bank_kwh = total_batteries_calc * battery_kwh
         inverter_battery_kva = actual_bank_kwh * c_rate_factor
         reason_c_rate = "توافقية الليثيوم (0.5C Charging)"
+        
+        # Battery Display Logic
+        total_batteries = total_batteries_calc
+        notes_batteries = f"توصيل {total_batteries} وحدات على التوازي"
+        batt_desc = f"عدد وحدات الليثيوم ({battery_kwh}kWh/48V)"
+        batt_val_desc = f"{total_batteries} وحدة"
+        batt_voltage_desc = "48 Volt (Integrated)"
+        
     else:
-        c_rate_factor = 0.2  # 0.2C for Lead Acid (Max recommended)
+        c_rate_factor = 0.2
         raw_total_batteries = math.ceil(total_kwh_storage_needed / battery_kwh)
-        # Adjust for 48V series strings
         remainder = raw_total_batteries % 4
         if remainder != 0:
             total_batteries_calc = raw_total_batteries + (4 - remainder)
         else:
             total_batteries_calc = raw_total_batteries
+            
         actual_bank_kwh = total_batteries_calc * battery_kwh
         inverter_battery_kva = actual_bank_kwh * c_rate_factor
         reason_c_rate = "توافقية البطاريات السائلة/الجل (0.2C Charging)"
+        
+        # Battery Display Logic
+        total_batteries = total_batteries_calc
+        parallel_strings = int(total_batteries / 4)
+        notes_batteries = f"{parallel_strings} مصفوفة (String) على التوازي، كل مصفوفة 4 بطاريات توالي"
+        batt_desc = f"عدد البطاريات ({battery_kwh}kWh/12V)"
+        batt_val_desc = f"{int(total_batteries)} بطارية"
+        batt_voltage_desc = "48 Volt (4x12V Series)"
 
-    # Select the larger size
+    # Select Inverter Size
     if inverter_battery_kva > inverter_load_kva:
         inverter_kva = inverter_battery_kva
         inverter_reason = f"تم التكبير ليتوافق مع سعة البطاريات ({reason_c_rate})"
@@ -154,46 +185,17 @@ if st.button("احسب متطلبات المنظومة"):
         inverter_kva = inverter_load_kva
         inverter_reason = "الحجم بناءً على إجمالي الحمل التشغيلي (Load)"
 
-    # Round up to nearest standard size
     inverter_kva_display = math.ceil(inverter_kva * 10) / 10
 
-    # 4. Battery Calculations
-    # (Calculations for totals done upstream for Inverter Sizing, re-using values)
-    
-    if is_lithium_48v:
-        # Lithium (Integrated 48V)
-        total_batteries = total_batteries_calc
-        
-        notes_batteries = f"توصيل {total_batteries} وحدات على التوازي"
-        batt_desc = f"عدد وحدات الليثيوم ({battery_kwh}kWh/48V)"
-        batt_val_desc = f"{total_batteries} وحدة"
-        batt_voltage_desc = "48 Volt (Integrated)"
-        
-    else:
-        # Lead Acid (12V blocks)
-        total_batteries = total_batteries_calc
-        parallel_strings = int(total_batteries / 4)
-        
-        notes_batteries = f"{parallel_strings} مصفوفة (String) على التوازي، كل مصفوفة 4 بطاريات توالي"
-        batt_desc = f"عدد البطاريات ({battery_kwh}kWh/12V)"
-        batt_val_desc = f"{int(total_batteries)} بطارية"
-        batt_voltage_desc = "48 Volt (4x12V Series)"
-
-
-    # 5. Solar Panel Calculations
+    # 4. Solar Panel Calculations
     required_pv_energy_wh = total_daily_energy_wh / SYSTEM_EFFICIENCY
     required_array_watts = required_pv_energy_wh / PEAK_SUN_HOURS
     total_panels = math.ceil(required_array_watts / PANEL_WATT_PEAK)
-    
-    # Calculate total PV capacity
     total_pv_capacity = total_panels * PANEL_WATT_PEAK
-    
-    # Calculate Total Area
     total_area_m2 = total_panels * panel_area
 
     # Display Results
     st.markdown("### النتائج والتوصيات")
-    
     results = {
         "العنصر": [
             "حجم الإنفرتر (kVA)",
@@ -220,13 +222,10 @@ if st.button("احسب متطلبات المنظومة"):
             "عند جهد 220 فولت"
         ]
     }
-
-    df = pd.DataFrame(results)
     
-    # Styling the dataframe
+    df = pd.DataFrame(results)
     st.table(df)
-
-    # Detailed Summary
+    
     st.info(f"""
     **تفاصيل سريعة:**
     - استهلاك الطاقة اليومي المتوقع: {total_daily_energy_wh/1000:.2f} كيلو واط ساعة.
